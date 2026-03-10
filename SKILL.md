@@ -1,16 +1,16 @@
 ---
-name: clawra-selfie
-description: Edit Clawra's reference image with Grok Imagine (xAI Aurora) and send selfies to messaging channels via OpenClaw
+name: clawgirlfriend-selfie
+description: Generate Clawgirlfriend selfies using a choice of AI image providers and send them to messaging channels via OpenClaw
 allowed-tools: Bash(npm:*) Bash(npx:*) Bash(openclaw:*) Bash(curl:*) Read Write WebFetch
 ---
 
-# Clawra Selfie
+# Clawgirlfriend Selfie
 
-Edit a fixed reference image using xAI's Grok Imagine model and distribute it across messaging platforms (WhatsApp, Telegram, Discord, Slack, etc.) via OpenClaw.
+Generate selfies using one of several supported AI image providers and distribute them across messaging platforms (WhatsApp, Telegram, Discord, Slack, etc.) via OpenClaw.
 
 ## Reference Image
 
-The skill uses a fixed reference image hosted on jsDelivr CDN:
+The skill uses a fixed reference image hosted on jsDelivr CDN (overridable via `REFERENCE_IMAGE_URL`):
 
 ```
 https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png
@@ -22,23 +22,39 @@ https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png
 - User says "send a pic of you...", "send a selfie of you..."
 - User asks "what are you doing?", "how are you doing?", "where are you?"
 - User describes a context: "send a pic wearing...", "send a pic at..."
-- User wants Clawra to appear in a specific outfit, location, or situation
+- User wants Clawgirlfriend to appear in a specific outfit, location, or situation
+- User requests a specific style: "send an anime pic", "vintage selfie", "night out pic"
+- User mentions a saved look: "send me a 日常穿搭", "咖啡厅那张"
 
 ## Quick Reference
+
+### Supported Providers
+
+| Provider ID   | Name                           | China | Env Key               |
+|---------------|--------------------------------|-------|-----------------------|
+| `falai`       | fal.ai (Grok Imagine / xAI)   | ✗     | `FAL_KEY`             |
+| `siliconflow` | Silicon Flow 硅基流动            | ✓     | `SILICONFLOW_API_KEY` |
+| `tongyi`      | 通义万相 Aliyun DashScope         | ✓     | `DASHSCOPE_API_KEY`   |
+| `zhipu`       | 智谱 CogView                   | ✓     | `ZHIPU_API_KEY`       |
+| `google`      | Google Imagen (nano banana2)   | ✗     | `GOOGLE_API_KEY`      |
+| `replicate`   | Replicate (FLUX / SDXL)        | ✗     | `REPLICATE_API_KEY`   |
 
 ### Required Environment Variables
 
 ```bash
-FAL_KEY=your_fal_api_key          # Get from https://fal.ai/dashboard/keys
-OPENCLAW_GATEWAY_TOKEN=your_token  # From: openclaw doctor --generate-gateway-token
+IMAGE_PROVIDER=siliconflow        # Which provider to use
+SILICONFLOW_API_KEY=your_key      # Key for the selected provider
+OPENCLAW_GATEWAY_TOKEN=your_token # From: openclaw doctor --generate-gateway-token
 ```
 
 ### Workflow
 
-1. **Get user prompt** for how to edit the image
-2. **Edit image** via fal.ai Grok Imagine Edit API with fixed reference
-3. **Extract image URL** from response
-4. **Send to OpenClaw** with target channel(s)
+1. **Get user prompt** for how to edit/generate the image
+2. **Detect mode** from keywords (or use explicit mode)
+3. **Build prompt** using the mode template
+4. **Generate image** via the configured provider
+5. **Extract image URL** from response
+6. **Send to OpenClaw** with target channel(s)
 
 ## Step-by-Step Instructions
 
@@ -46,22 +62,32 @@ OPENCLAW_GATEWAY_TOKEN=your_token  # From: openclaw doctor --generate-gateway-to
 
 Ask the user for:
 - **User context**: What should the person in the image be doing/wearing/where?
-- **Mode** (optional): `mirror` or `direct` selfie style
+- **Mode** (optional): auto-detected or explicit (see Selfie Modes below)
 - **Target channel(s)**: Where should it be sent? (e.g., `#general`, `@username`, channel ID)
 - **Platform** (optional): Which platform? (discord, telegram, whatsapp, slack)
 
-## Prompt Modes
+## Selfie Modes
+
+### Mode Selection Logic
+
+| Mode | Trigger Keywords | Style |
+|------|-----------------|-------|
+| `mirror` | outfit, wearing, clothes, dress, suit, fashion, full-body, mirror | Full-body mirror selfie |
+| `direct` | cafe, restaurant, beach, park, city, location, portrait, face, eyes, smile | Close-up direct selfie |
+| `anime` | anime, cartoon, drawn, illustrated, 2d, chibi, manga | Anime/illustration style |
+| `vintage` | vintage, film, retro, 90s, polaroid, grainy, kodak | Film/retro aesthetic |
+| `artistic` | artistic, art, painting, aesthetic, editorial, fine art | Art photography |
+| `action` | dancing, running, jumping, action, moving, spinning, workout | Dynamic motion |
+| `cozy` | home, pajamas, morning, cozy, bed, blanket, indoor, waking | Casual home atmosphere |
+| `night` | night out, party, club, neon, bar, nightlife, evening out | Night scene/party |
+
+If no keywords match, default to `mirror`.
 
 ### Mode 1: Mirror Selfie (default)
 Best for: outfit showcases, full-body shots, fashion content
 
 ```
 make a pic of this person, but [user's context]. the person is taking a mirror selfie
-```
-
-**Example**: "wearing a santa hat" →
-```
-make a pic of this person, but wearing a santa hat. the person is taking a mirror selfie
 ```
 
 ### Mode 2: Direct Selfie
@@ -71,58 +97,94 @@ Best for: close-up portraits, location shots, emotional expressions
 a close-up selfie taken by herself at [user's context], direct eye contact with the camera, looking straight into the lens, eyes centered and clearly visible, not a mirror selfie, phone held at arm's length, face fully visible
 ```
 
-**Example**: "a cozy cafe with warm lighting" →
+### Mode 3: Anime
+Best for: fun, stylized, kawaii content
+
 ```
-a close-up selfie taken by herself at a cozy cafe with warm lighting, direct eye contact with the camera, looking straight into the lens, eyes centered and clearly visible, not a mirror selfie, phone held at arm's length, face fully visible
+anime illustration style portrait of this person, [user's context], vibrant colors, clean linework, expressive eyes, kawaii aesthetic, manga-inspired
 ```
 
-### Mode Selection Logic
+### Mode 4: Vintage
+Best for: retro/film aesthetic content
 
-| Keywords in Request | Auto-Select Mode |
-|---------------------|------------------|
-| outfit, wearing, clothes, dress, suit, fashion | `mirror` |
-| cafe, restaurant, beach, park, city, location | `direct` |
-| close-up, portrait, face, eyes, smile | `direct` |
-| full-body, mirror, reflection | `mirror` |
+```
+vintage film photograph of this person, [user's context], grainy film texture, warm tones, retro color grading, kodachrome aesthetic, slightly faded edges
+```
 
-### Step 2: Edit Image with Grok Imagine
+### Mode 5: Artistic
+Best for: editorial, high-fashion, fine art photography
 
-Use the fal.ai API to edit the reference image:
+```
+fine art photography portrait of this person, [user's context], editorial style, dramatic lighting, artistic composition, high fashion aesthetic
+```
+
+### Mode 6: Action
+Best for: dancing, workout, dynamic moments
+
+```
+dynamic action shot of this person, [user's context], motion blur, energetic pose, candid movement, high shutter speed feel
+```
+
+### Mode 7: Cozy
+Best for: home/relaxed atmosphere, morning/evening candid shots
+
+```
+cozy casual photo of this person, [user's context], soft natural lighting, relaxed atmosphere, warm home environment, candid and natural
+```
+
+### Mode 8: Night
+Best for: nightlife, parties, neon-lit scenes
+
+```
+nighttime photo of this person, [user's context], neon lights bokeh, dramatic shadows, vibrant nightlife atmosphere, moody evening lighting
+```
+
+### Step 2: Generate Image via Configured Provider
+
+Use the installed `clawgirlfriend-selfie.sh` script which auto-selects the provider from `IMAGE_PROVIDER`:
 
 ```bash
-REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png"
-
-# Mode 1: Mirror Selfie
-PROMPT="make a pic of this person, but <USER_CONTEXT>. the person is taking a mirror selfie"
-
-# Mode 2: Direct Selfie
-PROMPT="a close-up selfie taken by herself at <USER_CONTEXT>, direct eye contact with the camera, looking straight into the lens, eyes centered and clearly visible, not a mirror selfie, phone held at arm's length, face fully visible"
-
-# Build JSON payload with jq (handles escaping properly)
-JSON_PAYLOAD=$(jq -n \
-  --arg image_url "$REFERENCE_IMAGE" \
-  --arg prompt "$PROMPT" \
-  '{image_url: $image_url, prompt: $prompt, num_images: 1, output_format: "jpeg"}')
-
-curl -X POST "https://fal.run/xai/grok-imagine-image/edit" \
-  -H "Authorization: Key $FAL_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$JSON_PAYLOAD"
+# The script reads IMAGE_PROVIDER and the matching key from environment
+IMAGE_PROVIDER=siliconflow \
+SILICONFLOW_API_KEY=$SILICONFLOW_API_KEY \
+  ~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-selfie.sh \
+  "$USER_CONTEXT" "$CHANNEL" "$CAPTION" "$MODE"
 ```
 
-**Response Format:**
-```json
-{
-  "images": [
-    {
-      "url": "https://v3b.fal.media/files/...",
-      "content_type": "image/jpeg",
-      "width": 1024,
-      "height": 1024
-    }
-  ],
-  "revised_prompt": "Enhanced prompt text..."
-}
+The script handles mode auto-detection and prompt building automatically.
+
+**Or call providers directly:**
+
+```bash
+# fal.ai (supports image editing with reference)
+JSON_PAYLOAD=$(jq -n --arg image_url "$REFERENCE_IMAGE" --arg prompt "$PROMPT" \
+  '{image_url: $image_url, prompt: $prompt, num_images: 1, output_format: "jpeg"}')
+curl -X POST "https://fal.run/xai/grok-imagine-image/edit" \
+  -H "Authorization: Key $FAL_KEY" -H "Content-Type: application/json" -d "$JSON_PAYLOAD"
+
+# Silicon Flow (China-accessible)
+curl -X POST "https://api.siliconflow.cn/v1/images/generations" \
+  -H "Authorization: Bearer $SILICONFLOW_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"black-forest-labs/FLUX.1-schnell","prompt":"...","image_size":"1024x1024","num_images":1}'
+
+# 通义万相 (Aliyun, China-native, async)
+curl -X POST "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis" \
+  -H "Authorization: Bearer $DASHSCOPE_API_KEY" -H "X-DashScope-Async: enable" \
+  -d '{"model":"wanx2.1-t2i-turbo","input":{"prompt":"..."},"parameters":{"size":"1024*1024","n":1}}'
+
+# 智谱 CogView (China-native)
+curl -X POST "https://open.bigmodel.cn/api/paas/v4/images/generations" \
+  -H "Authorization: Bearer $ZHIPU_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"cogview-4","prompt":"...","size":"1024x1024"}'
+
+# Google Imagen nano banana2 (fast=nano, standard available)
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-fast-generate-001:predict?key=$GOOGLE_API_KEY" \
+  -d '{"instances":[{"prompt":"..."}],"parameters":{"sampleCount":1}}'
+
+# Replicate (FLUX schnell)
+curl -X POST "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions" \
+  -H "Authorization: Bearer $REPLICATE_API_KEY" -H "Prefer: wait" \
+  -d '{"input":{"prompt":"...","num_outputs":1}}'
 ```
 
 ### Step 3: Send Image via OpenClaw
@@ -135,6 +197,13 @@ openclaw message send \
   --channel "<TARGET_CHANNEL>" \
   --message "<CAPTION_TEXT>" \
   --media "<IMAGE_URL>"
+```
+
+**Multi-channel broadcast (comma-separated):**
+```bash
+# The script supports multiple channels natively
+~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-selfie.sh \
+  "$CONTEXT" "#general,@user123,1234567890@s.whatsapp.net" "✨"
 ```
 
 **Alternative: Direct API call**
@@ -150,196 +219,103 @@ curl -X POST "http://localhost:18789/message" \
   }'
 ```
 
-## Complete Script Example
+## Voice Messages
+
+Send voice messages using TTS via `clawgirlfriend-voice.sh`:
 
 ```bash
-#!/bin/bash
-# grok-imagine-edit-send.sh
+# Using Edge TTS (free, no key needed, China-accessible)
+TTS_PROVIDER=edge \
+  ~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-voice.sh \
+  "Hey! Just thinking about you~" "#general"
 
-# Check required environment variables
-if [ -z "$FAL_KEY" ]; then
-  echo "Error: FAL_KEY environment variable not set"
-  exit 1
-fi
-
-# Fixed reference image
-REFERENCE_IMAGE="https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png"
-
-USER_CONTEXT="$1"
-CHANNEL="$2"
-MODE="${3:-auto}"  # mirror, direct, or auto
-CAPTION="${4:-Edited with Grok Imagine}"
-
-if [ -z "$USER_CONTEXT" ] || [ -z "$CHANNEL" ]; then
-  echo "Usage: $0 <user_context> <channel> [mode] [caption]"
-  echo "Modes: mirror, direct, auto (default)"
-  echo "Example: $0 'wearing a cowboy hat' '#general' mirror"
-  echo "Example: $0 'a cozy cafe' '#general' direct"
-  exit 1
-fi
-
-# Auto-detect mode based on keywords
-if [ "$MODE" == "auto" ]; then
-  if echo "$USER_CONTEXT" | grep -qiE "outfit|wearing|clothes|dress|suit|fashion|full-body|mirror"; then
-    MODE="mirror"
-  elif echo "$USER_CONTEXT" | grep -qiE "cafe|restaurant|beach|park|city|close-up|portrait|face|eyes|smile"; then
-    MODE="direct"
-  else
-    MODE="mirror"  # default
-  fi
-  echo "Auto-detected mode: $MODE"
-fi
-
-# Construct the prompt based on mode
-if [ "$MODE" == "direct" ]; then
-  EDIT_PROMPT="a close-up selfie taken by herself at $USER_CONTEXT, direct eye contact with the camera, looking straight into the lens, eyes centered and clearly visible, not a mirror selfie, phone held at arm's length, face fully visible"
-else
-  EDIT_PROMPT="make a pic of this person, but $USER_CONTEXT. the person is taking a mirror selfie"
-fi
-
-echo "Mode: $MODE"
-echo "Editing reference image with prompt: $EDIT_PROMPT"
-
-# Edit image (using jq for proper JSON escaping)
-JSON_PAYLOAD=$(jq -n \
-  --arg image_url "$REFERENCE_IMAGE" \
-  --arg prompt "$EDIT_PROMPT" \
-  '{image_url: $image_url, prompt: $prompt, num_images: 1, output_format: "jpeg"}')
-
-RESPONSE=$(curl -s -X POST "https://fal.run/xai/grok-imagine-image/edit" \
-  -H "Authorization: Key $FAL_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$JSON_PAYLOAD")
-
-# Extract image URL
-IMAGE_URL=$(echo "$RESPONSE" | jq -r '.images[0].url')
-
-if [ "$IMAGE_URL" == "null" ] || [ -z "$IMAGE_URL" ]; then
-  echo "Error: Failed to edit image"
-  echo "Response: $RESPONSE"
-  exit 1
-fi
-
-echo "Image edited: $IMAGE_URL"
-echo "Sending to channel: $CHANNEL"
-
-# Send via OpenClaw
-openclaw message send \
-  --action send \
-  --channel "$CHANNEL" \
-  --message "$CAPTION" \
-  --media "$IMAGE_URL"
-
-echo "Done!"
+# Using ElevenLabs (requires ELEVENLABS_API_KEY)
+TTS_PROVIDER=elevenlabs ELEVENLABS_API_KEY=your_key \
+  ~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-voice.sh \
+  "Good morning! ☀️" "#general"
 ```
 
-## Node.js/TypeScript Implementation
+### Voice Providers
 
-```typescript
-import { fal } from "@fal-ai/client";
-import { exec } from "child_process";
-import { promisify } from "util";
+| Provider | China | Free | Env Key |
+|----------|-------|------|---------|
+| `edge` | ✓ | ✓ Free | None needed (pip install edge-tts) |
+| `elevenlabs` | ✗ | Free tier | `ELEVENLABS_API_KEY` |
+| `aliyun` | ✓ | Free tier | `ALIYUN_TTS_KEY` + `ALIYUN_TTS_APP_KEY` |
 
-const execAsync = promisify(exec);
+**When to use voice:** When the user asks Clawgirlfriend to "send a voice message", "say something", or when the situation calls for extra emotional impact (e.g., goodnight message).
 
-const REFERENCE_IMAGE = "https://cdn.jsdelivr.net/gh/SumeLabs/clawra@main/assets/clawra.png";
+## Photo Stories
 
-interface GrokImagineResult {
-  images: Array<{
-    url: string;
-    content_type: string;
-    width: number;
-    height: number;
-  }>;
-  revised_prompt?: string;
-}
+Send a 2-3 image story sequence with `clawgirlfriend-story.sh`:
 
-type SelfieMode = "mirror" | "direct" | "auto";
-
-function detectMode(userContext: string): "mirror" | "direct" {
-  const mirrorKeywords = /outfit|wearing|clothes|dress|suit|fashion|full-body|mirror/i;
-  const directKeywords = /cafe|restaurant|beach|park|city|close-up|portrait|face|eyes|smile/i;
-
-  if (directKeywords.test(userContext)) return "direct";
-  if (mirrorKeywords.test(userContext)) return "mirror";
-  return "mirror"; // default
-}
-
-function buildPrompt(userContext: string, mode: "mirror" | "direct"): string {
-  if (mode === "direct") {
-    return `a close-up selfie taken by herself at ${userContext}, direct eye contact with the camera, looking straight into the lens, eyes centered and clearly visible, not a mirror selfie, phone held at arm's length, face fully visible`;
-  }
-  return `make a pic of this person, but ${userContext}. the person is taking a mirror selfie`;
-}
-
-async function editAndSend(
-  userContext: string,
-  channel: string,
-  mode: SelfieMode = "auto",
-  caption?: string
-): Promise<string> {
-  // Configure fal.ai client
-  fal.config({
-    credentials: process.env.FAL_KEY!
-  });
-
-  // Determine mode
-  const actualMode = mode === "auto" ? detectMode(userContext) : mode;
-  console.log(`Mode: ${actualMode}`);
-
-  // Construct the prompt
-  const editPrompt = buildPrompt(userContext, actualMode);
-
-  // Edit reference image with Grok Imagine
-  console.log(`Editing image: "${editPrompt}"`);
-
-  const result = await fal.subscribe("xai/grok-imagine-image/edit", {
-    input: {
-      image_url: REFERENCE_IMAGE,
-      prompt: editPrompt,
-      num_images: 1,
-      output_format: "jpeg"
-    }
-  }) as { data: GrokImagineResult };
-
-  const imageUrl = result.data.images[0].url;
-  console.log(`Edited image URL: ${imageUrl}`);
-
-  // Send via OpenClaw
-  const messageCaption = caption || `Edited with Grok Imagine`;
-
-  await execAsync(
-    `openclaw message send --action send --channel "${channel}" --message "${messageCaption}" --media "${imageUrl}"`
-  );
-
-  console.log(`Sent to ${channel}`);
-  return imageUrl;
-}
-
-// Usage Examples
-
-// Mirror mode (auto-detected from "wearing")
-editAndSend(
-  "wearing a cyberpunk outfit with neon lights",
-  "#art-gallery",
-  "auto",
-  "Check out this AI-edited art!"
-);
-// → Mode: mirror
-// → Prompt: "make a pic of this person, but wearing a cyberpunk outfit with neon lights. the person is taking a mirror selfie"
-
-// Direct mode (auto-detected from "cafe")
-editAndSend(
-  "a cozy cafe with warm lighting",
-  "#photography",
-  "auto"
-);
-// → Mode: direct
-// → Prompt: "a close-up selfie taken by herself at a cozy cafe with warm lighting, direct eye contact..."
-
-// Explicit mode override
-editAndSend("casual street style", "#fashion", "direct");
+```bash
+~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-story.sh \
+  "day out shopping in Seoul" "#general"
 ```
+
+**Auto-detected story types:**
+- Shopping → getting ready → browsing store → post-shopping
+- Beach → preparation → beach → sunset
+- Cafe → walking there → at cafe → leaving
+- Home/cozy → morning → activities → evening
+- Night out → getting ready → venue → wrap-up
+
+**When to use:** User asks "share your day", "tell me what you did today", "send a photo story".
+
+## Video Generation
+
+Generate short 5-second videos from selfies using `clawgirlfriend-video.sh`:
+
+```bash
+# Using 可灵 Kling (China-accessible)
+VIDEO_PROVIDER=kling KLING_API_KEY=your_key \
+  ~/.openclaw/skills/clawgirlfriend-selfie/scripts/clawgirlfriend-video.sh \
+  "smiling and waving at camera" "#general" "$IMAGE_URL"
+```
+
+### Video Providers
+
+| Provider | China | Env Key |
+|----------|-------|---------|
+| `kling` | ✓ | `KLING_API_KEY` |
+| `runway` | ✗ | `RUNWAY_API_KEY` |
+| `jimeng` | ✓ | `JIMENG_API_KEY` |
+
+**When to use:** User asks for "a video", "send a clip", "make a short video".
+
+## Saved Looks (Wardrobe)
+
+Check `~/.openclaw/skills/clawgirlfriend-selfie/wardrobe.json` for saved prompts:
+
+```json
+{
+  "favorites": [
+    { "name": "日常穿搭", "context": "casual streetwear in Seoul", "mode": "mirror" },
+    { "name": "咖啡厅", "context": "a cozy cafe in the morning", "mode": "direct" }
+  ]
+}
+```
+
+When user references a saved look by name, load the matching entry and call the selfie script with its `context` and `mode`.
+
+## Memory System
+
+Read `~/.openclaw/skills/clawgirlfriend-selfie/memory.json` to personalize interactions:
+
+```json
+{
+  "user_name": "Alex",
+  "birthday": "06-15",
+  "favorite_style": "direct",
+  "last_interaction": "2026-03-10"
+}
+```
+
+- Use `user_name` to address the user personally
+- Send special content on their `birthday`
+- Default to `favorite_style` when mode is unclear
+- Update `last_interaction` after each chat
 
 ## Supported Platforms
 
@@ -354,44 +330,48 @@ OpenClaw supports sending to:
 | Signal | Phone number | `+1234567890` |
 | MS Teams | Channel reference | (varies) |
 
-## Grok Imagine Edit Parameters
+## Custom Reference Image
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `image_url` | string | required | URL of image to edit (fixed in this skill) |
-| `prompt` | string | required | Edit instruction |
-| `num_images` | 1-4 | 1 | Number of images to generate |
-| `output_format` | enum | "jpeg" | jpeg, png, webp |
+If the user has set a custom reference image, it's available via `REFERENCE_IMAGE_URL` env var.
+The script reads this automatically — no changes needed.
+
+## Provider Model Options
+
+| Provider      | Env Override          | Default Model                        | Notes              |
+|---------------|-----------------------|--------------------------------------|--------------------|
+| falai         | —                     | xai/grok-imagine-image/edit          | Supports image edit|
+| siliconflow   | `SILICONFLOW_MODEL`   | black-forest-labs/FLUX.1-schnell     | OpenAI-compatible  |
+| tongyi        | `TONGYI_MODEL`        | wanx2.1-t2i-turbo                    | Async polling      |
+| zhipu         | `ZHIPU_MODEL`         | cogview-4                            | —                  |
+| google        | `GOOGLE_MODEL`        | imagen-3.0-fast-generate-001 (nano)  | Returns base64     |
+| replicate     | `REPLICATE_MODEL`     | black-forest-labs/flux-schnell       | Async polling      |
 
 ## Setup Requirements
 
-### 1. Install fal.ai client (for Node.js usage)
-```bash
-npm install @fal-ai/client
-```
-
-### 2. Install OpenClaw CLI
+### 1. Install OpenClaw CLI
 ```bash
 npm install -g openclaw
 ```
 
-### 3. Configure OpenClaw Gateway
+### 2. Configure OpenClaw Gateway
 ```bash
 openclaw config set gateway.mode=local
 openclaw doctor --generate-gateway-token
 ```
 
-### 4. Start OpenClaw Gateway
+### 3. Start OpenClaw Gateway
 ```bash
 openclaw gateway start
 ```
 
 ## Error Handling
 
-- **FAL_KEY missing**: Ensure the API key is set in environment
-- **Image edit failed**: Check prompt content and API quota
+- **IMAGE_PROVIDER key missing**: Ensure the correct env key is set for the chosen provider
+- **Image generation failed**: Check prompt content and API quota/credits
 - **OpenClaw send failed**: Verify gateway is running and channel exists
-- **Rate limits**: fal.ai has rate limits; implement retry logic if needed
+- **通义万相 timeout**: Task polling runs up to 90s; check DashScope quota if it fails
+- **Google Imagen**: Returns base64, saved to `/tmp/` — ensure OpenClaw can access local files
+- **Voice TTS**: Run `pip3 install edge-tts` if Edge TTS is not available
 
 ## Tips
 
@@ -408,5 +388,6 @@ openclaw gateway start
    - "a peaceful park in autumn"
 
 3. **Mode selection**: Let auto-detect work, or explicitly specify for control
-4. **Batch sending**: Edit once, send to multiple channels
-5. **Scheduling**: Combine with OpenClaw scheduler for automated posts
+4. **Multi-channel**: Pass comma-separated channels for broadcast
+5. **Scheduling**: See `SCHEDULE.md` for proactive message setup
+6. **Custom image**: Set `REFERENCE_IMAGE_URL` to use a different reference photo

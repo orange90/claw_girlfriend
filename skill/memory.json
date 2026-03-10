@@ -1,0 +1,10 @@
+{
+  "_comment": "User memory store. Copy to ~/.openclaw/skills/clawgirlfriend-selfie/memory.json after install.",
+  "user_name": "",
+  "birthday": "",
+  "favorite_style": "mirror",
+  "favorite_channel": "",
+  "last_interaction": "",
+  "notes": [],
+  "_usage": "Agent: read this file to personalize responses. Update last_interaction on each chat. Add birthday for special date greetings. Add notes for user preferences."
+}

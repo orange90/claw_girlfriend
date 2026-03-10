@@ -1,9 +1,9 @@
 {
-  "name": "clawra",
+  "name": "clawgirlfriend",
   "version": "1.1.1",
-  "description": "Add selfie superpowers to your OpenClaw agent using xAI Grok Imagine",
+  "description": "Add selfie superpowers to your OpenClaw agent using your choice of AI image provider",
   "bin": {
-    "clawra": "./bin/cli.js"
+    "clawgirlfriend": "./bin/cli.js"
   },
   "files": [
     "bin/",
@@ -18,8 +18,11 @@
     "grok",
     "imagine",
     "xai",
-    "aurora",
-    "fal.ai",
+    "siliconflow",
+    "tongyi",
+    "cogview",
+    "google-imagen",
+    "replicate",
     "selfie",
     "ai-agent",
     "image-generation",
@@ -37,7 +40,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@fal-ai/client": "^1.2.0",
     "@types/node": "^22.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.0"

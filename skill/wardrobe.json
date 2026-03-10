@@ -1,0 +1,42 @@
+{
+  "_comment": "Saved selfie prompt favorites. Copy to ~/.openclaw/skills/clawgirlfriend-selfie/wardrobe.json after install.",
+  "favorites": [
+    {
+      "name": "日常穿搭",
+      "context": "casual streetwear in Seoul, trendy outfit",
+      "mode": "mirror",
+      "caption": "Just another day out~ ✨"
+    },
+    {
+      "name": "咖啡厅",
+      "context": "a cozy cafe in the morning, warm lighting, latte in hand",
+      "mode": "direct",
+      "caption": "Coffee time ☕"
+    },
+    {
+      "name": "海边",
+      "context": "a sunny beach at sunset, golden hour",
+      "mode": "direct",
+      "caption": "Living for this view 🌊"
+    },
+    {
+      "name": "居家慵懒",
+      "context": "lazy Sunday at home, cozy pajamas, soft afternoon light",
+      "mode": "cozy",
+      "caption": "Weekend mood 🥱💕"
+    },
+    {
+      "name": "复古风",
+      "context": "vintage aesthetic, retro outfit, film camera vibe",
+      "mode": "vintage",
+      "caption": "Film era forever 📷"
+    },
+    {
+      "name": "夜晚出行",
+      "context": "night out in the city, glowing street lights, chic evening look",
+      "mode": "night",
+      "caption": "City nights 🌙✨"
+    }
+  ],
+  "_usage": "Agent: when user requests a named look (e.g. '发一张日常穿搭'), match name field and call clawgirlfriend-selfie with the context and mode."
+}
